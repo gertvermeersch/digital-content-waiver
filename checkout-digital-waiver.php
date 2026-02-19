@@ -5,20 +5,22 @@
  * Version: 1.0.0
  * Author: Stormlabs
  * License: GPLv2 or later
- * Text Domain: stormlabs
+ * Text Domain: checkout-digital-waiver
  */
 
 if ( ! defined('ABSPATH') ) {
     exit;
 }
 
-const STORMLABS_DIGITAL_WAIVER_FIELD_ID = 'stormlabs-checkout-digital-waiver/digital_waiver';
-const STORMLABS_DIGITAL_WAIVER_POST_KEY = 'stormlabs_digital_waiver';
+const CHECKOUT_DIGITAL_WAIVER_FIELD_ID = 'checkout-digital-waiver/digital_waiver';
+const CHECKOUT_DIGITAL_WAIVER_POST_KEY = 'checkout_digital_waiver';
+const CHECKOUT_DIGITAL_WAIVER_META_KEY = '_checkout_digital_waiver';
+const CHECKOUT_DIGITAL_WAIVER_TS_META_KEY = '_checkout_digital_waiver_ts';
 
 /**
  * Check whether the current cart contains at least one virtual product.
  */
-function stormlabs_cart_has_virtual_product(): bool {
+function checkout_digital_waiver_cart_has_virtual_product(): bool {
     if ( ! function_exists('WC') || ! WC()->cart ) {
         return false;
     }
@@ -36,23 +38,23 @@ function stormlabs_cart_has_virtual_product(): bool {
 /**
  * Human-readable waiver message text.
  */
-function stormlabs_digital_waiver_text(): string {
-    return __('I request immediate delivery of digital content and acknowledge that I lose my right of withdrawal once delivery begins.', 'stormlabs');
+function checkout_digital_waiver_text(): string {
+    return __('I request immediate delivery of digital content and acknowledge that I lose my right of withdrawal once delivery begins.', 'checkout-digital-waiver');
 }
 
 /**
  * Validation error used in both classic checkout and block checkout.
  */
-function stormlabs_digital_waiver_error_text(): string {
-    return __('Please confirm immediate delivery of digital content and the loss of the withdrawal right.', 'stormlabs');
+function checkout_digital_waiver_error_text(): string {
+    return __('Please confirm immediate delivery of digital content and the loss of the withdrawal right.', 'checkout-digital-waiver');
 }
 
 /**
  * Store waiver audit values on an order.
  */
-function stormlabs_store_digital_waiver_audit( WC_Order $order ): void {
-    $order->update_meta_data('_stormlabs_digital_waiver', 'yes');
-    $order->update_meta_data('_stormlabs_digital_waiver_ts', (string) time());
+function checkout_digital_waiver_store_audit( WC_Order $order ): void {
+    $order->update_meta_data(CHECKOUT_DIGITAL_WAIVER_META_KEY, 'yes');
+    $order->update_meta_data(CHECKOUT_DIGITAL_WAIVER_TS_META_KEY, (string) time());
 }
 
 /**
@@ -64,12 +66,12 @@ add_action('woocommerce_init', function () {
     }
 
     woocommerce_register_additional_checkout_field([
-        'id'            => STORMLABS_DIGITAL_WAIVER_FIELD_ID,
-        'label'         => stormlabs_digital_waiver_text(),
+        'id'            => CHECKOUT_DIGITAL_WAIVER_FIELD_ID,
+        'label'         => checkout_digital_waiver_text(),
         'location'      => 'order',
         'type'          => 'checkbox',
         'required'      => true,
-        'error_message' => stormlabs_digital_waiver_error_text(),
+        'error_message' => checkout_digital_waiver_error_text(),
     ]);
 });
 
@@ -77,16 +79,16 @@ add_action('woocommerce_init', function () {
  * Extra guard for block checkout validation.
  */
 add_action('woocommerce_validate_additional_field', function ( WP_Error $errors, string $field_key, $field_value ) {
-    if ( STORMLABS_DIGITAL_WAIVER_FIELD_ID !== $field_key ) {
+    if ( CHECKOUT_DIGITAL_WAIVER_FIELD_ID !== $field_key ) {
         return;
     }
 
-    if ( ! stormlabs_cart_has_virtual_product() ) {
+    if ( ! checkout_digital_waiver_cart_has_virtual_product() ) {
         return;
     }
 
     if ( ! wc_string_to_bool((string) $field_value) ) {
-        $errors->add('stormlabs_digital_waiver_missing', stormlabs_digital_waiver_error_text());
+        $errors->add('checkout_digital_waiver_missing', checkout_digital_waiver_error_text());
     }
 }, 10, 3);
 
@@ -94,11 +96,11 @@ add_action('woocommerce_validate_additional_field', function ( WP_Error $errors,
  * Persist audit data for block checkout orders.
  */
 add_action('woocommerce_store_api_checkout_update_order_meta', function ( WC_Order $order ) {
-    $block_meta_key = '_wc_other/' . STORMLABS_DIGITAL_WAIVER_FIELD_ID;
+    $block_meta_key = '_wc_other/' . CHECKOUT_DIGITAL_WAIVER_FIELD_ID;
     $value          = $order->get_meta($block_meta_key, true);
 
     if ( wc_string_to_bool((string) $value) ) {
-        stormlabs_store_digital_waiver_audit($order);
+        checkout_digital_waiver_store_audit($order);
     }
 });
 
@@ -110,36 +112,36 @@ add_action('woocommerce_checkout_after_terms_and_conditions', function () {
         return;
     }
 
-    if ( ! stormlabs_cart_has_virtual_product() ) {
+    if ( ! checkout_digital_waiver_cart_has_virtual_product() ) {
         return;
     }
 
 
     $terms_url = get_permalink( wc_get_page_id('terms') );
 
-    woocommerce_form_field(STORMLABS_DIGITAL_WAIVER_POST_KEY, [
+    woocommerce_form_field(CHECKOUT_DIGITAL_WAIVER_POST_KEY, [
         'type'     => 'checkbox',
         'class'    => ['form-row', 'privacy'],
         'required' => true,
         'label'    => sprintf(
             /* translators: %s = Terms URL */
-            __('%1$s (%2$s)', 'stormlabs'),
-            stormlabs_digital_waiver_text(),
-            '<a href="' . esc_url($terms_url) . '" target="_blank" rel="noopener">' . esc_html__('more info', 'stormlabs') . '</a>'
+            __('%1$s (%2$s)', 'checkout-digital-waiver'),
+            checkout_digital_waiver_text(),
+            '<a href="' . esc_url($terms_url) . '" target="_blank" rel="noopener">' . esc_html__('more info', 'checkout-digital-waiver') . '</a>'
         ),
-    ], WC()->checkout ? WC()->checkout->get_value(STORMLABS_DIGITAL_WAIVER_POST_KEY) : '');
+    ], WC()->checkout ? WC()->checkout->get_value(CHECKOUT_DIGITAL_WAIVER_POST_KEY) : '');
 });
 
 /**
  * Validate the checkbox.
  */
 add_action('woocommerce_checkout_process', function () {
-    if ( ! stormlabs_cart_has_virtual_product() ) {
+    if ( ! checkout_digital_waiver_cart_has_virtual_product() ) {
         return;
     }
 
-    if ( empty($_POST[ STORMLABS_DIGITAL_WAIVER_POST_KEY ]) ) {
-        wc_add_notice(stormlabs_digital_waiver_error_text(), 'error');
+    if ( empty($_POST[ CHECKOUT_DIGITAL_WAIVER_POST_KEY ]) ) {
+        wc_add_notice(checkout_digital_waiver_error_text(), 'error');
     }
 });
 
@@ -151,8 +153,8 @@ add_action('woocommerce_checkout_create_order', function ( $order ) {
         return;
     }
 
-    if ( isset($_POST[ STORMLABS_DIGITAL_WAIVER_POST_KEY ]) ) {
-        stormlabs_store_digital_waiver_audit($order);
+    if ( isset($_POST[ CHECKOUT_DIGITAL_WAIVER_POST_KEY ]) ) {
+        checkout_digital_waiver_store_audit($order);
     }
 }, 10, 1);
 
@@ -164,10 +166,10 @@ add_action('woocommerce_admin_order_data_after_billing_address', function ( $ord
         return;
     }
 
-    $val = $order->get_meta('_stormlabs_digital_waiver');
+    $val = $order->get_meta(CHECKOUT_DIGITAL_WAIVER_META_KEY);
     if ( $val === 'yes' ) {
-        $ts = (int) $order->get_meta('_stormlabs_digital_waiver_ts');
-        $when = $ts ? esc_html( gmdate('Y-m-d H:i:s', $ts) ) . ' UTC' : esc_html__('recorded', 'stormlabs');
+        $ts = (int) $order->get_meta(CHECKOUT_DIGITAL_WAIVER_TS_META_KEY);
+        $when = $ts ? esc_html( gmdate('Y-m-d H:i:s', $ts) ) . ' UTC' : esc_html__('recorded', 'checkout-digital-waiver');
         echo '<p><strong>Digital content waiver:</strong> confirmed (' . $when . ')</p>';
     }
 });
